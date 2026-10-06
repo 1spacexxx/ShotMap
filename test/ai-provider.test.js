@@ -1,0 +1,9 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {completionEndpoint,parseAnalysis,requestAnalysis} from '../server/ai-provider.js'
+const metrics={composition:85,lighting:70,sharpness:90,colors:80,visualQuality:82,overallScore:81}
+test('AI base URL resolves to the actual chat endpoint',()=>{assert.equal(completionEndpoint('https://example.org/v1'),'https://example.org/v1/chat/completions');assert.throws(()=>completionEndpoint('https://localhost/v1'))})
+test('AI vision request uses messages and image content, not a root image_url payload',async()=>{let seen;const result=await requestAnalysis({endpoint:'https://example.org/v1',model:'vision',apiKey:'Bearer test',image:'data:image/png;base64,AA=='},async(url,options)=>{seen={url,...options};return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify(metrics)}}]})}});assert.deepEqual(result,metrics);assert.equal(seen.headers.Authorization,'Bearer test');assert.equal(seen.redirect,'error');const b=JSON.parse(seen.body);assert.equal(b.messages[0].content[1].image_url.url,'data:image/png;base64,AA==')})
+test('AI generation model is rejected before sending credentials',async()=>{await assert.rejects(requestAnalysis({endpoint:'https://example.org/v1',model:'gpt-image-2',image:'x'},()=>{throw Error('must not call')}),/image-generation/)})
+test('AI malformed output cannot silently become a zero score',()=>{assert.throws(()=>parseAnalysis({choices:[{message:{content:'not json'}}]}),/valid JSON/);assert.throws(()=>parseAnalysis({}),/missing/)})
+test('403 does not claim the saved key is invalid or reflect upstream secrets',async()=>{await assert.rejects(requestAnalysis({endpoint:'https://example.org/v1',model:'vision',image:'x'},async()=>({ok:false,status:403})),/does not prove the key is invalid/)})

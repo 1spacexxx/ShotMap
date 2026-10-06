@@ -1,0 +1,204 @@
+/* src/world-map.css */
+.shotmap-world-map {
+  --shotmap-map-ocean-start: #173f4b;
+  --shotmap-map-ocean-end: #245650;
+  --shotmap-map-grid: rgba(186, 224, 199, .16);
+  --shotmap-map-land: #83b48c;
+  --shotmap-map-land-stroke: rgba(227, 246, 225, .48);
+  --shotmap-map-marker: #f0a15b;
+  --shotmap-map-ink: #f7fbf4;
+  width: 100%;
+  min-width: 0;
+  color: var(--shotmap-map-ink);
+  font-family: inherit;
+}
+.shotmap-map-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .7rem;
+}
+.shotmap-map-zoom,
+.shotmap-map-reset {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(19, 42, 43, .86);
+  box-shadow: 0 8px 24px rgba(9, 31, 34, .15);
+}
+.shotmap-map-zoom button,
+.shotmap-map-reset {
+  min-width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  color: var(--shotmap-map-ink);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.shotmap-map-zoom button:hover,
+.shotmap-map-zoom button:focus-visible,
+.shotmap-map-reset:hover:not(:disabled),
+.shotmap-map-reset:focus-visible:not(:disabled) {
+  background: rgba(255, 255, 255, .14);
+}
+.shotmap-map-zoom span {
+  min-width: 3.2rem;
+  text-align: center;
+  font-size: .7rem;
+  letter-spacing: .08em;
+  opacity: .8;
+}
+.shotmap-map-reset {
+  padding: 0 .85rem;
+  font-size: .72rem;
+  letter-spacing: .04em;
+}
+.shotmap-map-reset:disabled {
+  cursor: default;
+  opacity: .5;
+}
+.shotmap-map-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--shotmap-map-ocean-start);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+.shotmap-map-frame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 1;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.shotmap-map-frame svg:active {
+  cursor: grabbing;
+}
+.shotmap-map-ocean {
+  opacity: .98;
+}
+.shotmap-map-countries path {
+  fill: var(--shotmap-map-land);
+  stroke: var(--shotmap-map-land-stroke);
+  stroke-width: .55px;
+  vector-effect: non-scaling-stroke;
+}
+.shotmap-map-marker {
+  outline: none;
+  cursor: pointer;
+}
+.shotmap-marker-pulse {
+  fill: var(--shotmap-map-marker);
+  opacity: .2;
+  transform-origin: center;
+  transition: transform .2s ease, opacity .2s ease;
+}
+.shotmap-marker-halo {
+  fill: var(--shotmap-map-marker);
+  stroke: rgba(255, 249, 230, .9);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.shotmap-marker-dot {
+  fill: #fff9e8;
+}
+.shotmap-map-marker:hover .shotmap-marker-pulse,
+.shotmap-map-marker:focus-visible .shotmap-marker-pulse,
+.shotmap-map-marker.is-active .shotmap-marker-pulse {
+  opacity: .42;
+  transform: scale(1.45);
+}
+.shotmap-map-marker:focus-visible .shotmap-marker-halo {
+  stroke-width: 3px;
+}
+.shotmap-map-tooltip {
+  overflow: visible;
+  pointer-events: auto;
+}
+.shotmap-tooltip-card {
+  display: flex;
+  flex-direction: column;
+  gap: .18rem;
+  min-height: 74px;
+  padding: .7rem .8rem;
+  color: #173334;
+  background: #fffaf0;
+  border: 1px solid rgba(19, 51, 52, .12);
+  border-radius: .7rem;
+  box-shadow: 0 10px 24px rgba(7, 30, 32, .25);
+  font-size: .72rem;
+}
+.shotmap-tooltip-card strong {
+  font-size: .82rem;
+  line-height: 1.15;
+}
+.shotmap-tooltip-card span {
+  overflow: hidden;
+  color: #58706c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shotmap-tooltip-card small {
+  color: #c27639;
+  font-weight: 700;
+}
+.shotmap-tooltip-card button {
+  align-self: flex-start;
+  margin-top: .18rem;
+  padding: 0;
+  border: 0;
+  color: #b96831;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.shotmap-tooltip-card button:hover,
+.shotmap-tooltip-card button:focus-visible {
+  text-decoration: underline;
+}
+.shotmap-map-hint {
+  position: absolute;
+  right: .85rem;
+  bottom: .7rem;
+  padding: .28rem .5rem;
+  border-radius: 999px;
+  color: rgba(247, 251, 244, .82);
+  background: rgba(17, 46, 48, .65);
+  font-size: .62rem;
+  letter-spacing: .03em;
+  pointer-events: none;
+}
+@media (max-width: 600px) {
+  .shotmap-map-toolbar {
+    margin-bottom: .5rem;
+  }
+  .shotmap-map-zoom button,
+  .shotmap-map-reset {
+    height: 2rem;
+  }
+  .shotmap-map-zoom span {
+    min-width: 2.8rem;
+    font-size: .64rem;
+  }
+  .shotmap-map-reset {
+    padding-inline: .7rem;
+    font-size: .66rem;
+  }
+  .shotmap-map-hint {
+    right: .55rem;
+    bottom: .5rem;
+    font-size: .56rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shotmap-marker-pulse {
+    transition: none;
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "version": "1.0.0",
+  "projectId": "659abcba-da87-4b24-8941-11974f225b1d",
+  "projectUrl": "https://superdesign.dev/teams/4873b70e-36a9-4206-a117-eafdee19df06/projects/659abcba-da87-4b24-8941-11974f225b1d",
+  "liveCanvasUrl": "https://superdesign.dev/teams/4873b70e-36a9-4206-a117-eafdee19df06/projects/659abcba-da87-4b24-8941-11974f225b1d?live=1",
+  "designMode": "extend",
+  "viewport": "desktop",
+  "executionMode": "superdesign-cli",
+  "activeDraftId": "529c67a8-37e9-4079-9535-1c90ea41ea83",
+  "components": [
+    {
+      "name": "MainNavbar",
+      "componentId": "fc438867-abbc-4afc-95e5-12c3aa2c354b"
+    },
+    {
+      "name": "SiteFooter",
+      "componentId": "da5e5900-8e3d-4c69-bd3b-cab0ce229ee2"
+    }
+  ],
+  "drafts": [
+    {
+      "draftId": "1c77b867-bc18-437a-9e59-a4024aa9a38d",
+      "title": "ShotMap General Page — Current Design (Step 3a)",
+      "previewUrl": "https://p.superdesign.dev/draft/1c77b867-bc18-437a-9e59-a4024aa9a38d",
+      "stage": "step-3a-reproduction"
+    },
+    {
+      "draftId": "529c67a8-37e9-4079-9535-1c90ea41ea83",
+      "title": "ShotMap General Page — Variation 1 (Map-First Discovery)",
+      "previewUrl": "https://p.superdesign.dev/draft/529c67a8-37e9-4079-9535-1c90ea41ea83",
+      "stage": "step-3b-variation-1-selected"
+    },
+    {
+      "draftId": "5d5e6f75-25db-4e3e-8d59-27b02896da36",
+      "title": "ShotMap General Page — Variation 2 (Editorial Magazine)",
+      "previewUrl": "https://p.superdesign.dev/draft/5d5e6f75-25db-4e3e-8d59-27b02896da36",
+      "stage": "step-3b-variation-2"
+    },
+    {
+      "draftId": "c1fe7905-432e-47ca-bb7f-2ac006f60a12",
+      "title": "ShotMap Leaderboard Page (#leaderboard)",
+      "previewUrl": "https://p.superdesign.dev/draft/c1fe7905-432e-47ca-bb7f-2ac006f60a12",
+      "stage": "step-4-flow-page"
+    },
+    {
+      "draftId": "84db2805-fbfd-4bef-ab25-fa23b32b2acf",
+      "title": "ShotMap Admin Panel (#admin)",
+      "previewUrl": "https://p.superdesign.dev/draft/84db2805-fbfd-4bef-ab25-fa23b32b2acf",
+      "stage": "step-4-flow-page"
+    },
+    {
+      "draftId": "9eac5877-7f8d-4473-940e-ea10d9c1fade",
+      "title": "ShotMap Personal Studio Dashboard (#profile)",
+      "previewUrl": "https://p.superdesign.dev/draft/9eac5877-7f8d-4473-940e-ea10d9c1fade",
+      "stage": "step-4-flow-page"
+    }
+  ],
+  "updatedAt": "2026-10-06T22:16:00+03:00"
+}
