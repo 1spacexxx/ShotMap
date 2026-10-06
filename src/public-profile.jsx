@@ -1,8 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import { Avatar } from './avatar.jsx'
-import { Trophy, MapPin, Heart, Sparkles, ChevronLeft, Share2, Camera, Users, Shield } from 'lucide-react'
+import { Trophy, MapPin, Heart, Sparkles, ChevronLeft, Share2, Camera, Users, Shield, Bell } from 'lucide-react'
 
 function Shell({ children, onHome }) {
+  const [theme, setTheme] = useState(() => localStorage.getItem('shotmap_theme') || 'light')
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    document.documentElement.dataset.theme = next
+    localStorage.setItem('shotmap_theme', next)
+  }
+  const openNotifications = () => {
+    sessionStorage.setItem('shotmap_studio_tab', 'Notifications')
+    window.location.hash = '#profile'
+  }
   return (
     <>
       <header className="nav sub-nav">
@@ -14,6 +25,11 @@ function Shell({ children, onHome }) {
           <button onClick={() => window.location.hash = '#admin'}>Admin</button>
         </nav>
         <div className="nav-actions">
+          <button className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>{theme === 'dark' ? '☀' : '☾'}</button>
+          <button type="button" className="notification-btn has-unread" aria-label="Notifications" onClick={openNotifications} title="Open Notifications">
+            <Bell size={17}/>
+            <span className="badge">3</span>
+          </button>
           <button className="outline-btn" onClick={onHome}><ChevronLeft size={14}/> Back to map</button>
         </div>
       </header>

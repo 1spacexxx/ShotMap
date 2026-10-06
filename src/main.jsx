@@ -246,21 +246,43 @@ function LeaderboardPage({ onHome }) {
 function PhotoPage({ id, onHome, notify }) {
   const [data,setData]=useState(null); const [error,setError]=useState(''); const [rating,setRating]=useState(0); const [report,setReport]=useState(false); const [reason,setReason]=useState('spam'); const [details,setDetails]=useState('');
   const [lightbox, setLightbox] = useState(false); const [fav, setFav] = useState(false);
-  async function photoPath(path){setData(null);setError('');try{const data=await api(path);setData(data)}catch(e){setError(e.message)}}
+  const [showHud, setShowHud] = useState(false);
+  const [related, setRelated] = useState([]);
+  async function photoPath(path){setData(null);setError('');try{const data=await api(path);setData(data);if(data?.photo?.place_id){api(`/places/${data.photo.place_id}`).then(pl=>setRelated((pl.photos||[]).filter(x=>String(x.id)!==String(data.photo.id)).slice(0,4))).catch(()=>{})}}catch(e){setError(e.message)}}
   React.useEffect(()=>{photoPath(`/photos/${id}`)},[id]);
-  if(error)return <Shell onHome={onHome}><main className="sub-page"><h1>Photo unavailable</h1><p>{error}</p><button className="primary" onClick={()=>{setError('');photoPath(`/photos/${id}`)}}>Retry</button><button className="text-btn" onClick={onHome}>Back to explore</button></main></Shell>;
-  if(!data)return <Shell onHome={onHome}><main className="sub-page"><p>Loading photo…</p></main></Shell>;
+  if(error)return <Shell onHome={onHome} notify={notify}><main className="sub-page"><h1>Photo unavailable</h1><p>{error}</p><button className="primary" onClick={()=>{setError('');photoPath(`/photos/${id}`)}}>Retry</button><button className="text-btn" onClick={onHome}>Back to explore</button></main></Shell>;
+  if(!data)return <Shell onHome={onHome} notify={notify}><main className="sub-page"><p>Loading photo…</p></main></Shell>;
   const p=data.photo;
   const sendReport=async()=>{try{await api('/reports',{method:'POST',body:JSON.stringify({photo_id:id,reason,details})});setReport(false);setDetails('');notify('Report sent')}catch(e){notify(e.message)}};
   const sharePhoto=()=>{navigator.clipboard?.writeText(window.location.href).then(()=>notify('Photo link copied to clipboard')).catch(()=>notify('Link ready in address bar'))}
   const verdict = p.ai_score >= 92 ? 'Masterpiece composition & light balance' : p.ai_score >= 85 ? 'Strong editorial framing & color harmony' : 'Authentic capture with balanced exposure'
   const imgSrc = p.image_url || photoFallbackUrl(p.place_id || p.id)
 
-  return <Shell onHome={onHome}><main className="sub-page detail-grid">
+  return <Shell onHome={onHome} notify={notify}><main className="sub-page detail-grid">
     <div className="detail-photo-frame">
       <div className="detail-photo-zoom-wrap" onClick={() => setLightbox(true)} title="Click to inspect fullscreen">
         <img className="detail-photo" src={imgSrc} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=photoFallbackUrl(p.id)}} alt={p.title}/>
-        <button type="button" className="photo-zoom-badge" onClick={e => { e.stopPropagation(); setLightbox(true) }}>⤢ Fullscreen</button>
+        {showHud && (
+          <div className="photo-hud-overlay" onClick={e => e.stopPropagation()}>
+            <div className="hud-grid-line v1"/><div className="hud-grid-line v2"/>
+            <div className="hud-grid-line h1"/><div className="hud-grid-line h2"/>
+            <div className="hud-reticle">
+              <span className="hud-reticle-tag">◎ AI Focus Lock · {p.sharpness}/100</span>
+            </div>
+            <div className="hud-telemetry-bar">
+              <span>COMP {p.composition}%</span>
+              <span>LIGHT {p.lighting}%</span>
+              <span>COLOR {p.colors}%</span>
+              <span>QUAL {p.visual_quality}%</span>
+            </div>
+          </div>
+        )}
+        <div className="photo-frame-controls" onClick={e => e.stopPropagation()}>
+          <button type="button" className={`photo-hud-btn ${showHud ? 'active' : ''}`} onClick={() => setShowHud(v => !v)}>
+            ⊞ {showHud ? 'Hide AI Grid' : 'AI Grid HUD'}
+          </button>
+          <button type="button" className="photo-zoom-badge" onClick={() => setLightbox(true)}>⤢ Fullscreen</button>
+        </div>
       </div>
       <div className="detail-photo-caption">
         <span
@@ -285,6 +307,23 @@ function PhotoPage({ id, onHome, notify }) {
         <span className="meta-chip"><Heart size={12}/> {p.likes || 0} likes</span>
         <span className="meta-chip">👁 {p.views || 1} views</span>
       </div>
+
+      {related.length > 0 && (
+        <div className="detail-related-box">
+          <div className="detail-related-head">
+            <b>More captures from {p.place_name}</b>
+            {p.place_id && <button type="button" className="text-btn" onClick={() => window.location.hash = `#place/${p.place_id}`}>View place ↗</button>}
+          </div>
+          <div className="detail-related-grid">
+            {related.map(r => (
+              <button key={r.id} type="button" className="detail-related-item" onClick={() => window.location.hash = `#photo/${r.id}`}>
+                <img src={r.image_url || photoFallbackUrl(r.id)} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = photoFallbackUrl(r.id) }} alt={r.title}/>
+                <span>AI {r.ai_score}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
     <section className="detail-analysis-card">
       <div className="eyebrow"><span className="dot"/> Photo analysis</div>
@@ -345,24 +384,57 @@ function PhotoPage({ id, onHome, notify }) {
 function PlacePage({ id, onHome, notify }) {
   const [data,setData]=useState(null); const [saved,setSaved]=useState(false); const [placeSort,setPlaceSort]=useState('ai_score');
   React.useEffect(()=>{api(`/places/${id}`).then(setData).catch(e=>notify(e.message))},[id]);
-  if(!data)return <Shell onHome={onHome}><main className="sub-page"><p>Loading place…</p></main></Shell>;
+  if(!data)return <Shell onHome={onHome} notify={notify}><main className="sub-page"><p>Loading place…</p></main></Shell>;
   const sortedPhotos = [...(data.photos || [])].sort((a, b) => {
     if (placeSort === 'likes') return Number(b.likes || 0) - Number(a.likes || 0)
     if (placeSort === 'newest') return Number(b.id || 0) - Number(a.id || 0)
     return Number(b.ai_score || 0) - Number(a.ai_score || 0)
   })
-  return <Shell onHome={onHome}><main className="sub-page">
+  const copyCoords = () => {
+    const coordsText = `${Number(data.place.latitude).toFixed(4)}, ${Number(data.place.longitude).toFixed(4)}`
+    navigator.clipboard?.writeText(coordsText).then(() => notify(`GPS coordinates copied: ${coordsText}`)).catch(() => notify(coordsText))
+  }
+  return <Shell onHome={onHome} notify={notify}><main className="sub-page">
     <div className="place-hero-banner">
       <div>
-        <div className="eyebrow"><span className="dot"/> Place gallery</div>
+        <div className="eyebrow"><span className="dot"/> Place gallery & field guide</div>
         <h1>{data.place.name}</h1>
         <p className="muted"><MapPin size={14} color="var(--orange)"/> {data.place.city}, {data.place.country} · {data.photos.length} photos · ★ {data.place.average_score}/100</p>
       </div>
       <div className="place-hero-actions">
         <div className="place-score-pill"><span>AVG AI</span><b>{data.place.average_score}<small>/100</small></b></div>
+        {Number.isFinite(Number(data.place.latitude)) && (
+          <button type="button" className="outline-btn" onClick={copyCoords}>
+            📍 Copy GPS
+          </button>
+        )}
         <button className="outline-btn" onClick={async()=>{try{const r=await api(`/places/${id}/favorite`,{method:'POST'});setSaved(r.saved);notify(r.saved?'Place saved':'Place removed from saved')}catch(e){notify(e.message)}}}>{saved?'♥ Saved place':'♡ Save place'}</button>
       </div>
     </div>
+
+    <div className="place-field-guide">
+      <div className="field-guide-card">
+        <span>☀ BEST LIGHT WINDOW</span>
+        <b>Golden Hour & Blue Hour</b>
+        <small>06:15–07:30 AM · 19:45–20:40 PM</small>
+      </div>
+      <div className="field-guide-card">
+        <span>📷 RECOMMENDED OPTICS</span>
+        <b>24–35mm Wide / 70mm</b>
+        <small>ƒ/5.6–ƒ/8 for architectural sharpness</small>
+      </div>
+      <div className="field-guide-card">
+        <span>🧭 VANTAGE & CROWD TIP</span>
+        <b>Low Crowd at Sunrise</b>
+        <small>Arrive 25 min before dawn for clean foreground</small>
+      </div>
+      <div className="field-guide-card">
+        <span>🛰️ COORDINATES</span>
+        <b>{Number(data.place.latitude || 48.8584).toFixed(4)}° N, {Number(data.place.longitude || 2.2945).toFixed(4)}° E</b>
+        <small>Verified ShotMap landmark pin</small>
+      </div>
+    </div>
+
     {Number.isFinite(Number(data.place.latitude)) && Number.isFinite(Number(data.place.longitude)) && (
       <div style={{marginBottom: 26}}>
         <LocationPinMap latitude={data.place.latitude} longitude={data.place.longitude} label={data.place.name} height={220}/>
@@ -1072,7 +1144,7 @@ function App() {
       : places[i%places.length].coords
   })) : places
 
-  const liveShots = dbShots.length ? dbShots.map(s => ({image:s.image_url,title:s.title,author:s.username,place:s.place_name,score:s.ai_score,avatar:s.username?.slice(0,2).toUpperCase(),id:s.id})) : shots
+  const liveShots = dbShots.length ? dbShots.map(s => ({image:s.image_url,title:s.title,author:s.username,place:s.place_name,score:s.ai_score,likes:s.likes||0,userId:s.user_id||1,avatar:s.username?.slice(0,2).toUpperCase(),id:s.id})) : shots
 
   const filteredPlaces = useMemo(() => {
     return livePlaces.filter(p => {
@@ -1097,7 +1169,26 @@ function App() {
   const currentHero = heroCards[2]
 
   const notify = (text) => { setToast(text); window.setTimeout(() => setToast(''), 2600) }
-  const onShotLike=async(e,id,title)=>{e.stopPropagation();if(!id)return;try{const result=await api(`/photos/${id}/like`,{method:'POST'});notify(result.liked?'Added like':'Like removed')}catch(error){notify(error.message)}};
+  const onShotLike=async(e,id,title)=>{e.stopPropagation();if(!id)return;try{const result=await api(`/photos/${id}/like`,{method:'POST'});setDbShots(prev=>prev.map(x=>x.id===id?{...x,likes:Math.max(0,(x.likes||0)+(result.liked?1:-1))}:x));notify(result.liked?'Added like':'Like removed')}catch(error){notify(error.message)}};
+  const loadDemoSampleShot = () => {
+    const c = document.createElement('canvas')
+    c.width = 640; c.height = 420
+    const ctx = c.getContext('2d')
+    const g = ctx.createLinearGradient(0, 0, 0, 420)
+    g.addColorStop(0, '#1c2b36'); g.addColorStop(0.55, '#d96b38'); g.addColorStop(1, '#1a1e1b')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 640, 420)
+    ctx.fillStyle = 'rgba(255, 214, 140, 0.85)'
+    ctx.beginPath(); ctx.arc(460, 140, 46, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = '#121614'
+    ctx.beginPath(); ctx.moveTo(0, 310); ctx.lineTo(180, 220); ctx.lineTo(350, 285); ctx.lineTo(510, 195); ctx.lineTo(640, 275); ctx.lineTo(640, 420); ctx.lineTo(0, 420); ctx.fill()
+    const dataUrl = c.toDataURL('image/png')
+    onPhotoChosen(dataUrl)
+    const samplePlace = livePlaces[0] || { id: 1, name: 'Charles Bridge', city: 'Prague', country: 'Czech Republic', latitude: 50.0865, longitude: 14.4114 }
+    setUploadPlace(samplePlace)
+    if (!uploadTitle) setUploadTitle(`Golden Dusk at ${samplePlace.name}`)
+    setOwnership(true)
+    notify('Sample shot loaded — click "Analyze with AI"!')
+  }
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   const handleLogin = async () => { if(user){await api('/auth/logout',{method:'POST'}).catch(()=>{}); localStorage.removeItem('shotmap_token'); setUser(null); notify('Signed out'); return} setAuthMode('login') }
   const quickSignIn = async (email, password) => {
@@ -1123,7 +1214,7 @@ function App() {
   if(route==='#leaderboard')return <LeaderboardPage onHome={goHome}/>
   if(route==='#profile')return <Dashboard api={api} onHome={goHome} onLogin={()=>{window.location.hash='';setAuthMode('login')}} notify={notify} theme={theme} setTheme={setTheme}/>
   if(route==='#admin' && user?.role!=='admin')return (
-    <Shell onHome={goHome}>
+    <Shell onHome={goHome} notify={notify}>
       <main className="sub-page">
         <div className="eyebrow"><span className="dot"/> Restricted area</div>
         <h1>Admin access required</h1>
@@ -1290,7 +1381,21 @@ function App() {
               <input ref={searchInputRef} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search places..."/>
               <kbd>⌘ K</kbd>
             </div>
-            <button className="filter" onClick={() => { setSearch(''); setMapChip('All'); notify('Map filters reset') }}><SlidersHorizontal size={16}/> Filters</button>
+            <button
+              type="button"
+              className="filter"
+              onClick={() => {
+                if (!livePlaces.length) return
+                const pick = livePlaces[Math.floor(Math.random() * livePlaces.length)]
+                setSearch('')
+                setMapChip('All')
+                setActivePlace(pick)
+                notify(`✦ Spotlight: ${pick.name} (${pick.city})`)
+              }}
+            >
+              <Sparkles size={15}/> Surprise me
+            </button>
+            <button className="filter" onClick={() => { setSearch(''); setMapChip('All'); notify('Map filters reset') }}><SlidersHorizontal size={16}/> Reset</button>
           </div>
         </div>
 
@@ -1460,10 +1565,15 @@ function App() {
                   <img src={s.image} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=shots[0].image}} alt={s.title}/>
                   <span className="shot-score">AI <b>{s.score}</b></span>
                 </button>
-                <button className="shot-like" aria-label={`Like ${s.title}`} onClick={e=>onShotLike(e,s.id,s.title)}>♡</button>
+                <button className="shot-like" aria-label={`Like ${s.title}`} onClick={e=>onShotLike(e,s.id,s.title)}>♡{s.likes ? ` ${s.likes}` : ''}</button>
               </div>
               <div className="shot-info">
-                <div className="author">
+                <div
+                  className="author"
+                  onClick={() => { if (s.userId) window.location.hash = `#user/${s.userId}` }}
+                  style={{ cursor: s.userId ? 'pointer' : 'default' }}
+                  title={s.author ? `Open @${s.author} portfolio` : ''}
+                >
                   <span>{s.avatar}</span>
                   <div><b>{s.author}</b><small>{s.place}</small></div>
                 </div>
@@ -1564,10 +1674,10 @@ function App() {
       <button type="button" onClick={() => window.location.hash = '#admin'}><Shield size={16}/><span>Admin</span></button>
     </nav>
 
-    {showUpload && <div className="modal-backdrop" onClick={() => setShowUpload(false)}><div className="modal upload-modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setShowUpload(false)}><X/></button><div className="eyebrow">Share a moment</div><h2>Upload your <em>shot.</em></h2>{uploaded ? <div className="upload-preview"><img src={uploaded} alt="Предпросмотр"/></div> : <label className="dropzone"><Upload size={28}/><b>Drop your photo here</b><span>or click to browse · JPG, PNG up to 10MB</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => {const f=e.target.files?.[0]; if(f && f.size<=10*1024*1024){const r=new FileReader();r.onload=()=>onPhotoChosen(r.result);r.readAsDataURL(f)}else if(f)notify('Image must be smaller than 10 MB')}}/></label>}<div className="modal-fields upload-fields">
+    {showUpload && <div className="modal-backdrop" onClick={() => setShowUpload(false)}><div className="modal upload-modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setShowUpload(false)}><X/></button><div className="eyebrow">Share a moment</div><h2>Upload your <em>shot.</em></h2>{uploaded ? <div className="upload-preview"><img src={uploaded} alt="Предпросмотр"/><button type="button" className="upload-clear-btn" onClick={() => setUploaded(null)}>Change photo</button></div> : <label className="dropzone"><Upload size={28}/><b>Drop your photo here</b><span>or click to browse · JPG, PNG up to 10MB</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => {const f=e.target.files?.[0]; if(f && f.size<=10*1024*1024){const r=new FileReader();r.onload=()=>onPhotoChosen(r.result);r.readAsDataURL(f)}else if(f)notify('Image must be smaller than 10 MB')}}/></label>}{!uploaded && <div style={{display:'flex',justifyContent:'center',marginBottom:12}}><button type="button" className="outline-btn" onClick={loadDemoSampleShot}><Sparkles size={13}/> Instant Demo Sample Shot (1-Click AI Test)</button></div>}<div className="modal-fields upload-fields">
       <label className="field-label">Локация{guessing?<span className="field-hint"> AI определяет место…</span>:locationGuess?<span className="field-hint guess-hint"> AI предлагает: {locationGuess.place||locationGuess.city}{locationGuess.confidence?` (${locationGuess.confidence}%)`:''}</span>:null}<LocationPicker value={uploadPlace} onChange={setUploadPlace} disabled={!uploaded}/>{locationGuess&&<button type="button" className="guess-accept" disabled={!uploaded} onClick={()=>{api(`/geocode?q=${encodeURIComponent(locationGuess.query)}&limit=1`).then(({results})=>{if(results[0])setUploadPlace(results[0])}).catch(()=>{})}}>Принять предложение AI</button>}</label>
       <label className="field-label">Название фотографии<input value={uploadTitle} onChange={e=>setUploadTitle(e.target.value)} placeholder="Например: Golden hour at the bridge" maxLength={160}/></label>
-      <label className="ownership-check"><input type="checkbox" checked={ownership} onChange={e=>setOwnership(e.target.checked)}/><span className="ownership-box" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>Я автор этой фотографии и имею право её публиковать<span className="ownership-note">Отметка нужна, чтобы ShotMap знал: фото можно публиковать публично.</span></span></label>
+      <label className=" ownership-check"><input type="checkbox" checked={ownership} onChange={e=>setOwnership(e.target.checked)}/><span className="ownership-box" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span>Я автор этой фотографии и имею право её публиковать<span className="ownership-note">Отметка нужна, чтобы ShotMap знал: фото можно публиковать публично.</span></span></label>
       <p className="muted upload-note">Проверяем точные и похожие копии на ShotMap. Поиск совпадений в интернете пока не подключён. Локацию указывает автор — она не подтверждена автоматически.</p>
       <button className="primary upload-submit" onClick={handleUpload} disabled={uploadBusy||!uploaded||!uploadPlace||!ownership}><Sparkles size={16}/> {uploadBusy?'Analyzing…':'Analyze with AI'}</button>
     </div></div></div>}
