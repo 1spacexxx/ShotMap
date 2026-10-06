@@ -1,11 +1,15 @@
 // Client-side static database fallback for GitHub Pages hosting (when Node SQLite server is not running)
-const STORAGE_KEY = 'shotmap_static_db_v1'
+const STORAGE_KEY = 'shotmap_static_db_v2'
 
 const FALLBACK_IMAGES = [
   'https://commons.wikimedia.org/wiki/Special:FilePath/Prague_Charles_Bridge_2021_11.jpg?width=1600',
   'https://commons.wikimedia.org/wiki/Special:FilePath/Tour_Eiffel_Wikimedia_Commons.jpg?width=1600',
   'https://commons.wikimedia.org/wiki/Special:FilePath/Sagrada_Familia_01.jpg?width=1600',
-  'https://commons.wikimedia.org/wiki/Special:FilePath/Colosseum_in_Rome,_Italy_-_April_2007.jpg?width=1600'
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Colosseum_in_Rome,_Italy_-_April_2007.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Statue_of_Liberty_7.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Tokyo_Skytree_2012.JPG?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Sydney_Opera_House_-_Dec_2008.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Taj_Mahal_(Edited).jpeg?width=1600'
 ]
 
 function analyzeDeterministic(seed = 'shotmap') {
@@ -34,18 +38,22 @@ function createInitialDb() {
     { id: 3, name: 'Sagrada Família', city: 'Barcelona', country: 'Spain', latitude: 41.4036, longitude: 2.1744, average_score: 89 },
     { id: 4, name: 'Colosseum', city: 'Rome', country: 'Italy', latitude: 41.8902, longitude: 12.4922, average_score: 86 },
     { id: 5, name: 'Statue of Liberty', city: 'New York', country: 'United States', latitude: 40.6892, longitude: -74.0445, average_score: 90 },
-    { id: 6, name: 'Tokyo Skytree', city: 'Tokyo', country: 'Japan', latitude: 35.7101, longitude: 139.8107, average_score: 88 },
-    { id: 7, name: 'Sydney Opera House', city: 'Sydney', country: 'Australia', latitude: -33.8568, longitude: 151.2153, average_score: 91 },
-    { id: 8, name: 'Taj Mahal', city: 'Agra', country: 'India', latitude: 27.1751, longitude: 78.0421, average_score: 92 }
+    { id: 6, name: 'Tokyo Skytree', city: 'Tokyo', country: 'Japan', latitude: 35.7101, longitude: 139.8107, average_score: 93 },
+    { id: 7, name: 'Sydney Opera House', city: 'Sydney', country: 'Australia', latitude: -33.8568, longitude: 151.2153, average_score: 92 },
+    { id: 8, name: 'Taj Mahal', city: 'Agra', country: 'India', latitude: 27.1751, longitude: 78.0421, average_score: 95 }
   ]
 
   const titles = [
     ['Golden hour at the bridge', 'Architecture', 'landscape', 3, 1, 94],
+    ['Reflections of the Taj at sunrise', 'Architecture', 'landscape', 3, 8, 95],
+    ['Neon horizon from Sumida River', 'Night', 'night', 4, 6, 93],
     ['The quiet side of Paris', 'City', 'architecture', 4, 2, 92],
-    ['Blue hour in Barcelona', 'Architecture', 'night', 5, 3, 90],
-    ['Ancient arches at dawn', 'Architecture', 'landscape', 1, 4, 88],
+    ['Sails over Sydney Harbour', 'Architecture', 'landscape', 5, 7, 92],
     ['Morning mist over Vltava', 'Landscape', 'landscape', 1, 1, 91],
+    ['Blue hour in Barcelona', 'Architecture', 'night', 5, 3, 90],
+    ['Harbor torch at dusk', 'City', 'portrait', 2, 5, 90],
     ['Iron lattice in twilight', 'Night', 'night', 3, 2, 89],
+    ['Ancient arches at dawn', 'Architecture', 'landscape', 1, 4, 88],
     ['Stained glass symphony', 'Architecture', 'macro', 5, 3, 93],
     ['Roman travertine glow', 'City', 'street', 4, 4, 87]
   ]
@@ -56,7 +64,7 @@ function createInitialDb() {
     place_id,
     image_url: FALLBACK_IMAGES[(place_id - 1) % FALLBACK_IMAGES.length],
     title,
-    description: 'Captured during golden hour with natural light.',
+    description: 'Captured during golden hour with natural light and balanced dynamic range.',
     category,
     photo_type,
     created_at: now,
@@ -66,9 +74,9 @@ function createInitialDb() {
     sharpness: score,
     colors: Math.min(98, score + 1),
     visual_quality: score,
-    community_score: 4.7,
-    likes: 18 + idx * 9,
-    views: 120 + idx * 45,
+    community_score: 4.8,
+    likes: 22 + idx * 7,
+    views: 140 + idx * 45,
     ai_model: 'test',
     error: null
   }))
@@ -612,6 +620,11 @@ export async function handleStaticApi(path, options = {}) {
     }
     saveDb(db)
     return { ok: true, sent: db.users.length }
+  }
+  if (p === '/admin/reset-demo' && method === 'POST') {
+    const fresh = createInitialDb()
+    saveDb(fresh)
+    return { ok: true }
   }
 
   return { ok: true }

@@ -33,7 +33,16 @@ const api = async (path, options = {}) => {
   if (!response.ok) throw new Error(data.error || 'Request failed')
   return data
 }
-const publicPhotoFallbacks = ['https://commons.wikimedia.org/wiki/Special:FilePath/Prague_Charles_Bridge_2021_11.jpg?width=1600','https://commons.wikimedia.org/wiki/Special:FilePath/Tour_Eiffel_Wikimedia_Commons.jpg?width=1600','https://commons.wikimedia.org/wiki/Special:FilePath/Sagrada_Familia_01.jpg?width=1600','https://commons.wikimedia.org/wiki/Special:FilePath/Colosseum_in_Rome,_Italy_-_April_2007.jpg?width=1600']
+const publicPhotoFallbacks = [
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Prague_Charles_Bridge_2021_11.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Tour_Eiffel_Wikimedia_Commons.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Sagrada_Familia_01.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Colosseum_in_Rome,_Italy_-_April_2007.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Statue_of_Liberty_7.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Tokyo_Skytree_2012.JPG?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Sydney_Opera_House_-_Dec_2008.jpg?width=1600',
+  'https://commons.wikimedia.org/wiki/Special:FilePath/Taj_Mahal_(Edited).jpeg?width=1600'
+]
 const photoFallbackUrl = (id) => publicPhotoFallbacks[((Number(id||1)-1)%publicPhotoFallbacks.length+publicPhotoFallbacks.length)%publicPhotoFallbacks.length]
 const media = photoFallbackUrl
 const places = [
@@ -41,6 +50,10 @@ const places = [
   { id: 2, name: 'Eiffel Tower', city: 'Paris, France', photos: '2,104 photos', score: 91, image: publicPhotoFallbacks[1], x: '69%', y: '59%', latitude: 48.8584, longitude: 2.2945, category: 'Monuments', coords: '48.8584° N, 2.2945° E', composition: 94, lighting: 95, colors: 91 },
   { id: 3, name: 'Sagrada Família', city: 'Barcelona, Spain', photos: '856 photos', score: 89, image: publicPhotoFallbacks[2], x: '57%', y: '80%', latitude: 41.4036, longitude: 2.1744, category: 'Architecture', coords: '41.4036° N, 2.1744° E', composition: 93, lighting: 90, colors: 92 },
   { id: 4, name: 'Colosseum', city: 'Rome, Italy', photos: '1,672 photos', score: 86, image: publicPhotoFallbacks[3], x: '79%', y: '79%', latitude: 41.8902, longitude: 12.4922, category: 'Monuments', coords: '41.8902° N, 12.4922° E', composition: 91, lighting: 89, colors: 90 },
+  { id: 5, name: 'Statue of Liberty', city: 'New York, United States', photos: '1,420 photos', score: 90, image: publicPhotoFallbacks[4], x: '28%', y: '44%', latitude: 40.6892, longitude: -74.0445, category: 'Monuments', coords: '40.6892° N, 74.0445° W', composition: 92, lighting: 91, colors: 89 },
+  { id: 6, name: 'Tokyo Skytree', city: 'Tokyo, Japan', photos: '1,890 photos', score: 93, image: publicPhotoFallbacks[5], x: '84%', y: '46%', latitude: 35.7101, longitude: 139.8107, category: 'Architecture', coords: '35.7101° N, 139.8107° E', composition: 95, lighting: 93, colors: 94 },
+  { id: 7, name: 'Sydney Opera House', city: 'Sydney, Australia', photos: '1,180 photos', score: 92, image: publicPhotoFallbacks[6], x: '88%', y: '82%', latitude: -33.8568, longitude: 151.2153, category: 'Architecture', coords: '33.8568° S, 151.2153° E', composition: 94, lighting: 92, colors: 93 },
+  { id: 8, name: 'Taj Mahal', city: 'Agra, India', photos: '2,340 photos', score: 95, image: publicPhotoFallbacks[7], x: '72%', y: '52%', latitude: 27.1751, longitude: 78.0421, category: 'Architecture', coords: '27.1751° N, 78.0421° E', composition: 98, lighting: 95, colors: 94 },
 ]
 const shots = [
   { id: 1, image: publicPhotoFallbacks[0], title: 'Golden hour at the bridge', author: 'Maya Chen', place: 'Charles Bridge', score: 94, avatar: 'MC' },
@@ -65,9 +78,9 @@ function Shell({ children, onHome }) {
   }
   return (
     <>
-      <header className="nav">
+      <header className="nav sub-nav">
         <button className="brand" onClick={onHome}><span className="brand-mark">S</span><span>Shot<span>Map</span></span></button>
-        <nav className="nav-links">
+        <nav className="nav-links sub-nav-links">
           <button className={!hash ? 'active-nav' : ''} onClick={onHome}>Explore</button>
           <button className={hash === '#leaderboard' ? 'active-nav' : ''} onClick={()=>window.location.hash='#leaderboard'}>Leaderboard</button>
           <button className={hash === '#profile' ? 'active-nav' : ''} onClick={()=>window.location.hash='#profile'}>Profile</button>
@@ -79,6 +92,13 @@ function Shell({ children, onHome }) {
         </div>
       </header>
       {children}
+      <nav className="mobile-bottom-dock" aria-label="Mobile quick navigation">
+        <button type="button" className={!hash ? 'active' : ''} onClick={onHome}><MapPin size={16}/><span>Map</span></button>
+        <button type="button" className={hash === '#leaderboard' ? 'active' : ''} onClick={()=>window.location.hash='#leaderboard'}><Trophy size={16}/><span>Leaders</span></button>
+        <button type="button" className="dock-upload-btn" onClick={()=>{onHome();window.setTimeout(()=>window.dispatchEvent(new Event('shotmap:login')),80)}}><Camera size={16}/><span>Shoot</span></button>
+        <button type="button" className={hash === '#profile' ? 'active' : ''} onClick={()=>window.location.hash='#profile'}><Users size={16}/><span>Studio</span></button>
+        <button type="button" className={hash === '#admin' ? 'active' : ''} onClick={()=>window.location.hash='#admin'}><Shield size={16}/><span>Admin</span></button>
+      </nav>
     </>
   )
 }
@@ -196,6 +216,7 @@ function LeaderboardPage({ onHome }) {
 
 function PhotoPage({ id, onHome, notify }) {
   const [data,setData]=useState(null); const [error,setError]=useState(''); const [rating,setRating]=useState(0); const [report,setReport]=useState(false); const [reason,setReason]=useState('spam'); const [details,setDetails]=useState('');
+  const [lightbox, setLightbox] = useState(false); const [fav, setFav] = useState(false);
   async function photoPath(path){setData(null);setError('');try{const data=await api(path);setData(data)}catch(e){setError(e.message)}}
   React.useEffect(()=>{photoPath(`/photos/${id}`)},[id]);
   if(error)return <Shell onHome={onHome}><main className="sub-page"><h1>Photo unavailable</h1><p>{error}</p><button className="primary" onClick={()=>{setError('');photoPath(`/photos/${id}`)}}>Retry</button><button className="text-btn" onClick={onHome}>Back to explore</button></main></Shell>;
@@ -204,10 +225,14 @@ function PhotoPage({ id, onHome, notify }) {
   const sendReport=async()=>{try{await api('/reports',{method:'POST',body:JSON.stringify({photo_id:id,reason,details})});setReport(false);setDetails('');notify('Report sent')}catch(e){notify(e.message)}};
   const sharePhoto=()=>{navigator.clipboard?.writeText(window.location.href).then(()=>notify('Photo link copied to clipboard')).catch(()=>notify('Link ready in address bar'))}
   const verdict = p.ai_score >= 92 ? 'Masterpiece composition & light balance' : p.ai_score >= 85 ? 'Strong editorial framing & color harmony' : 'Authentic capture with balanced exposure'
+  const imgSrc = p.image_url || photoFallbackUrl(p.place_id || p.id)
 
   return <Shell onHome={onHome}><main className="sub-page detail-grid">
     <div className="detail-photo-frame">
-      <img className="detail-photo" src={p.image_url || photoFallbackUrl(p.id)} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=photoFallbackUrl(p.id)}} alt={p.title}/>
+      <div className="detail-photo-zoom-wrap" onClick={() => setLightbox(true)} title="Click to inspect fullscreen">
+        <img className="detail-photo" src={imgSrc} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=photoFallbackUrl(p.id)}} alt={p.title}/>
+        <button type="button" className="photo-zoom-badge" onClick={e => { e.stopPropagation(); setLightbox(true) }}>⤢ Fullscreen</button>
+      </div>
       <div className="detail-photo-caption">
         <span
           onClick={() => { if (p.place_id) window.location.hash = `#place/${p.place_id}` }}
@@ -219,6 +244,11 @@ function PhotoPage({ id, onHome, notify }) {
         {Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && (
           <small>{Number(p.latitude).toFixed(4)}° N, {Number(p.longitude).toFixed(4)}° E</small>
         )}
+      </div>
+      <div className="detail-exif-strip">
+        <span>📷 Sony A7R V · 24–70mm GM</span>
+        <span>ƒ/2.8 · 1/500s · ISO 100</span>
+        <span>☀ Golden Hour Natural Light</span>
       </div>
       <div className="detail-meta-pills">
         <span className="meta-chip"><Camera size={12}/> {p.category || 'Architecture'}</span>
@@ -259,12 +289,27 @@ function PhotoPage({ id, onHome, notify }) {
       </div>
       <div className="detail-actions">
         <button className="primary" onClick={async()=>{try{await api(`/photos/${id}/like`,{method:'POST'});photoPath(`/photos/${id}`);notify('Updated like')}catch(e){notify(e.message)}}}><Heart size={14}/> Like ({p.likes || 0})</button>
-        <button className="outline-btn" onClick={async()=>{try{await api(`/photos/${id}/favorite`,{method:'POST'});notify('Favorite updated')}catch(e){notify(e.message)}}}>♡ Save to favorites</button>
+        <button className="outline-btn" onClick={async()=>{try{const r=await api(`/photos/${id}/favorite`,{method:'POST'});setFav(Boolean(r.favorited ?? !fav));notify('Favorite updated')}catch(e){notify(e.message)}}}>{fav ? '♥ Saved in favorites' : '♡ Save to favorites'}</button>
         <button className="outline-btn" onClick={sharePhoto}><Share2 size={14}/> Share</button>
         <button className="report-link" onClick={()=>setReport(!report)}>Report photo</button>
       </div>
       {report&&<div className="report-box"><select value={reason} onChange={e=>setReason(e.target.value)}><option value="spam">Spam</option><option value="inappropriate">Inappropriate</option><option value="copyright">Copyright</option><option value="wrong_location">Wrong location</option><option value="other">Other</option></select><textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="Details (optional)" maxLength="500"/><button className="primary" onClick={sendReport}>Send report</button></div>}
     </section>
+    {lightbox && (
+      <div className="lightbox-backdrop" onClick={() => setLightbox(false)}>
+        <div className="lightbox-inner" onClick={e => e.stopPropagation()}>
+          <button type="button" className="lightbox-close" onClick={() => setLightbox(false)}>× Close</button>
+          <img src={imgSrc} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=photoFallbackUrl(p.id)}} alt={p.title}/>
+          <div className="lightbox-caption">
+            <div>
+              <strong>{p.title}</strong>
+              <span>by @{p.username} · {p.place_name}, {p.city}</span>
+            </div>
+            <span className="podium-ai-pill">AI <b>{p.ai_score}</b>/100</span>
+          </div>
+        </div>
+      </div>
+    )}
   </main></Shell>
 }
 
@@ -354,6 +399,13 @@ function AdminPage({ onHome, notify }) {
     URL.revokeObjectURL(url)
     notify('Admin JSON snapshot downloaded')
   }
+  const resetDemo=async()=>{
+    try {
+      await api('/admin/reset-demo', { method: 'POST' })
+      await load()
+      notify('Demo database restored to initial state')
+    } catch (e) { notify(e.message) }
+  }
 
   const q = adminQuery.trim().toLowerCase()
   const filteredReports = reports.filter(r => {
@@ -399,6 +451,9 @@ function AdminPage({ onHome, notify }) {
         </button>
         <button type="button" className="outline-btn" onClick={exportSnapshot}>
           ⬇ Export JSON
+        </button>
+        <button type="button" className="outline-btn" onClick={resetDemo}>
+          ↺ Reset Demo
         </button>
         <button type="button" className="outline-btn" onClick={load}>Refresh</button>
       </div>
@@ -895,6 +950,19 @@ function App() {
         <a href="#leaderboard" onClick={() => setMenu(false)}>Leaderboard</a>
         <a href="#how" onClick={() => setMenu(false)}>How it works</a>
         <a href="#about" onClick={() => setMenu(false)}>About</a>
+        <div className="mobile-only-nav-items">
+          <a href="#profile" onClick={() => setMenu(false)}>Personal Studio</a>
+          <a href="#admin" onClick={() => setMenu(false)}>Admin Command Center</a>
+          {!user ? (
+            <button type="button" className="outline-btn" onClick={() => { setMenu(false); quickSignIn('admin@shotmap.local', 'admin123') }}>
+              <Shield size={14}/> 1-Click Demo Admin Login
+            </button>
+          ) : (
+            <button type="button" className="outline-btn" onClick={() => { setMenu(false); handleLogin() }}>
+              Sign out ({user.username})
+            </button>
+          )}
+        </div>
       </nav>
       <div className="nav-actions">
         <button className="theme-toggle" aria-label="Toggle theme" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>{theme==='dark'?'☀':'☾'}</button>
@@ -966,8 +1034,9 @@ function App() {
           </div>
 
           <div className="hero-stack-controls">
+            <button type="button" className="hero-arrow-btn" aria-label="Previous featured place" onClick={() => setHeroIndex(i => (i - 1 + places.length) % places.length)}>‹</button>
             <div className="hero-stack-dots">
-              {places.map((pl, idx) => (
+              {places.slice(0, 6).map((pl, idx) => (
                 <button
                   key={pl.id}
                   type="button"
@@ -977,6 +1046,7 @@ function App() {
                 />
               ))}
             </div>
+            <button type="button" className="hero-arrow-btn" aria-label="Next featured place" onClick={() => setHeroIndex(i => (i + 1) % places.length)}>›</button>
             <button
               type="button"
               className="hero-open-place-pill"
@@ -989,6 +1059,15 @@ function App() {
           <div className="vertical-note">CAPTURED DIFFERENTLY <span>✦</span></div>
         </div>
       </section>
+
+      <div className="hero-ticker-bar">
+        <div className="hero-ticker-inner">
+          <span><b>✦ {livePlaces.length}</b> Global Landmarks Indexed</span>
+          <span><b>★ 91.8</b> Community AI Average</span>
+          <span><b>⚡ 4-Axis</b> Neural Critique (Composition · Light · Sharpness · Color)</span>
+          <span><b>📱 Ready</b> Desktop & Mobile Atlas</span>
+        </div>
+      </div>
 
       <section className="explore-section" id="explore">
         <div className="section-head">
@@ -1267,6 +1346,14 @@ function App() {
       <span>Find beauty. Frame it. Share it.</span>
       <div><a href="#explore">Explore</a><a href="#leaderboard">Leaderboard</a><a href="#how">How it works</a><a href="#top">Back to top ↑</a></div>
     </footer>
+
+    <nav className="mobile-bottom-dock" aria-label="Mobile quick navigation">
+      <button type="button" className="active" onClick={() => scrollTo('explore')}><MapPin size={16}/><span>Map</span></button>
+      <button type="button" onClick={() => window.location.hash = '#leaderboard'}><Trophy size={16}/><span>Leaders</span></button>
+      <button type="button" className="dock-upload-btn" onClick={() => user ? setShowUpload(true) : setAuthMode('login')}><Upload size={16}/><span>Shoot</span></button>
+      <button type="button" onClick={() => window.location.hash = '#profile'}><Users size={16}/><span>Studio</span></button>
+      <button type="button" onClick={() => window.location.hash = '#admin'}><Shield size={16}/><span>Admin</span></button>
+    </nav>
 
     {showUpload && <div className="modal-backdrop" onClick={() => setShowUpload(false)}><div className="modal upload-modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setShowUpload(false)}><X/></button><div className="eyebrow">Share a moment</div><h2>Upload your <em>shot.</em></h2>{uploaded ? <div className="upload-preview"><img src={uploaded} alt="Предпросмотр"/></div> : <label className="dropzone"><Upload size={28}/><b>Drop your photo here</b><span>or click to browse · JPG, PNG up to 10MB</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => {const f=e.target.files?.[0]; if(f && f.size<=10*1024*1024){const r=new FileReader();r.onload=()=>onPhotoChosen(r.result);r.readAsDataURL(f)}else if(f)notify('Image must be smaller than 10 MB')}}/></label>}<div className="modal-fields upload-fields">
       <label className="field-label">Локация{guessing?<span className="field-hint"> AI определяет место…</span>:locationGuess?<span className="field-hint guess-hint"> AI предлагает: {locationGuess.place||locationGuess.city}{locationGuess.confidence?` (${locationGuess.confidence}%)`:''}</span>:null}<LocationPicker value={uploadPlace} onChange={setUploadPlace} disabled={!uploaded}/>{locationGuess&&<button type="button" className="guess-accept" disabled={!uploaded} onClick={()=>{api(`/geocode?q=${encodeURIComponent(locationGuess.query)}&limit=1`).then(({results})=>{if(results[0])setUploadPlace(results[0])}).catch(()=>{})}}>Принять предложение AI</button>}</label>
