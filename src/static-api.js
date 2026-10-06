@@ -1,5 +1,5 @@
 // Client-side static database fallback for GitHub Pages hosting (when Node SQLite server is not running)
-const STORAGE_KEY = 'shotmap_static_db_v2'
+const STORAGE_KEY = 'shotmap_static_db_v3'
 
 const FALLBACK_IMAGES = [
   'https://commons.wikimedia.org/wiki/Special:FilePath/Prague_Charles_Bridge_2021_11.jpg?width=1600',
@@ -95,9 +95,11 @@ function createInitialDb() {
   ]
 
   const notifications = [
-    { id: 1, user_id: 1, type: 'like', message: 'maya_chen liked “Ancient arches at dawn”', read_at: null, created_at: now },
-    { id: 2, user_id: 1, type: 'rating', message: 'alex_turner rated “Morning mist over Vltava” 5/5', read_at: null, created_at: now },
-    { id: 3, user_id: 2, type: 'system', message: '📣 Welcome to ShotMap Admin Command Center', read_at: null, created_at: now }
+    { id: 1, user_id: 1, type: 'like', message: 'maya_chen liked your photo “Ancient arches at dawn” (+10 XP)', read_at: null, created_at: now },
+    { id: 2, user_id: 1, type: 'rating', message: 'alex_turner rated “Morning mist over Vltava” ★ 5/5 — “Incredible atmospheric light!”', read_at: null, created_at: now },
+    { id: 3, user_id: 1, type: 'achievement', message: '🏆 Milestone unlocked: “High Score” — Earned 91+ AI Critique on Charles Bridge', read_at: null, created_at: now },
+    { id: 4, user_id: 2, type: 'system', message: '📣 System: ShotMap Command Center & AI Vision Telemetry v2.4 are active', read_at: null, created_at: now },
+    { id: 5, user_id: 1, type: 'like', message: 'lena_ortiz saved “Morning mist over Vltava” to her curated collection', read_at: now, created_at: now }
   ]
 
   return {

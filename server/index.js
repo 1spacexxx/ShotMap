@@ -70,6 +70,15 @@ const addWorldPlace = db.prepare('INSERT INTO places(name,city,country,latitude,
 for (const place of worldPlaces) addWorldPlace.run(...place,place[0],place[1],place[2])
 if (worldPlaces.length) db.prepare("DELETE FROM places WHERE id NOT IN (SELECT MIN(id) FROM places GROUP BY name,city,country)").run()
 db.prepare("UPDATE photos SET image_url=CASE place_id WHEN 1 THEN 'https://commons.wikimedia.org/wiki/Special:FilePath/Charles%20Bridge%20Prague%20in%20winter.jpg?width=1200' WHEN 2 THEN 'https://commons.wikimedia.org/wiki/Special:FilePath/Eiffel%20Tower%20at%20night.jpg?width=1200' WHEN 3 THEN 'https://commons.wikimedia.org/wiki/Special:FilePath/Sagrada%20Familia%202022.jpg?width=1200' WHEN 4 THEN 'https://commons.wikimedia.org/wiki/Special:FilePath/Colosseo%202020.jpg?width=1200' ELSE image_url END WHERE image_url LIKE 'https://images.unsplash.com/%'").run()
+if (db.prepare('SELECT COUNT(*) c FROM notifications').get().c === 0) {
+  const insNotif = db.prepare('INSERT INTO notifications(user_id,type,message,read_at,created_at) VALUES (?,?,?,?,?)')
+  for (const u of db.prepare('SELECT id FROM users').all()) {
+    insNotif.run(u.id, 'like', 'LukasOrtega liked your shot “Golden hour at the bridge”', null, now())
+    insNotif.run(u.id, 'rating', 'AnnaT rated “Blue hour in Barcelona” 5/5 ★', null, now())
+    insNotif.run(u.id, 'achievement', '🏆 Unlocked badge: High Score (AI score above 90/100)', null, now())
+    insNotif.run(u.id, 'system', '📣 ShotMap AI Vision Engine v2.4 is active — composition & golden-hour telemetry calibrated.', now(), now())
+  }
+}
 const pendingUpload=new Map()
 const MAX_BODY_BYTES = 12_000_000
 const securityHeaders = {'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin','Permissions-Policy':'camera=(), microphone=(), geolocation=()','Strict-Transport-Security':'max-age=31536000; includeSubDomains','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org https://commons.wikimedia.org https://upload.wikimedia.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self'"}

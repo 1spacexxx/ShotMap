@@ -68,9 +68,20 @@ function MapView({ places, onSelect }) { const mapRef=React.useRef(null); const 
   return <div className="custom-map" ref={mapRef}><div className="map-controls"><button aria-label="Zoom in" onClick={()=>setZoom(z=>Math.min(1.8,+(z+.2).toFixed(1)))}>+</button><button aria-label="Zoom out" onClick={()=>setZoom(z=>Math.max(1,+(z-.2).toFixed(1)))}>−</button><button aria-label="Reset map" onClick={()=>setZoom(1)}>⌂</button></div><div className="map-compass">N</div><div className="map-scale">WORLD · Natural Earth · 20° grid</div><svg style={{transform:`scale(${zoom})`}} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="ShotMap world map"><defs><linearGradient id="mapOcean" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#173b46"/><stop offset="1" stopColor="#244e48"/></linearGradient><pattern id="mapGrid" width="54" height="54" patternUnits="userSpaceOnUse"><path d="M54 0H0V54" fill="none" stroke="#a6d0b1" strokeOpacity=".12"/></pattern></defs><rect width={width} height={height} fill="url(#mapOcean)"/><rect width={width} height={height} fill="url(#mapGrid)"/><g className="map-countries">{worldFeatures.map((f,i)=><path key={i} d={worldPath(f)} />)}</g><text className="map-region" x="430" y="150">WORLD</text><g className="map-marker-layer">{markerNodes}</g></svg></div> }
 
 function Score({ value, large = false }) { return <span className={`score ${large ? 'score-large' : ''}`}>{value}<small>/100</small></span> }
-function Shell({ children, onHome }) {
+function Shell({ children, onHome, notify }) {
   const hash = typeof window !== 'undefined' ? window.location.hash : ''
   const [theme, setTheme] = useState(() => localStorage.getItem('shotmap_theme') || 'light')
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  React.useEffect(() => {
+    let cancelled = false
+    const token = localStorage.getItem('shotmap_token')
+    if (!token) { setUnreadCount(3); return }
+    api('/notifications')
+      .then(x => { if (!cancelled) setUnreadCount((x.notifications || []).filter(n => !n.read_at).length) })
+      .catch(() => { if (!cancelled) setUnreadCount(0) })
+    return () => { cancelled = true }
+  }, [showNotifications, hash])
   const toggleSubTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
@@ -89,7 +100,24 @@ function Shell({ children, onHome }) {
         </nav>
         <div className="nav-actions">
           <button className="theme-toggle" aria-label="Toggle theme" onClick={toggleSubTheme}>{theme==='dark'?'☀':'☾'}</button>
+          <button
+            type="button"
+            className={`notification-btn ${showNotifications ? 'is-open' : ''} ${unreadCount > 0 ? 'has-unread' : ''}`}
+            aria-label="Notifications"
+            aria-expanded={showNotifications}
+            onClick={() => setShowNotifications(v => !v)}
+          >
+            <Bell size={17}/>
+            {unreadCount > 0 && <span className="badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+          </button>
           <button className="outline-btn" onClick={onHome}><ChevronLeft size={14}/> Back to map</button>
+          {showNotifications && (
+            <Notifications
+              onClose={() => setShowNotifications(false)}
+              notify={notify || (() => {})}
+              onCountChange={setUnreadCount}
+            />
+          )}
         </div>
       </header>
       {children}
@@ -369,8 +397,179 @@ function ProfilePageV2({ onHome, notify }) {
   React.useEffect(()=>{let cancelled=false; (async()=>{if(!token){setError('Log in to view your profile.');return}try{const p=await api('/profile');if(cancelled)return;setData(p);setUsername(p.user.username);const results=await Promise.allSettled([api('/recommendations'),api('/leaderboard')]);if(cancelled)return;if(results[0].status==='fulfilled')setRecommendations(results[0].value.places||[]);if(results[1].status==='fulfilled')setLeaderboard(results[1].value.users||[])}catch(e){if(!cancelled)setError(e.message||'Profile request failed')}})();return()=>{cancelled=true}},[token]);
   if(error)return <Shell onHome={onHome}><main className="sub-page"><h1>Profile unavailable</h1><p className="muted">{error}</p><button className="primary" onClick={()=>window.dispatchEvent(new Event('shotmap:login'))}>Log in</button></main></Shell>; if(!data)return <Shell onHome={onHome}><main className="sub-page" role="status"><p>Loading profile…</p></main></Shell>; const rankIndex=leaderboard.findIndex(u=>u.id===data.user.id); const rank=rankIndex<0?'—':rankIndex+1; const average=data.photos.length?Math.round(data.photos.reduce((sum,p)=>sum+(p.ai_score||0),0)/data.photos.length):0; const points=data.photos.reduce((sum,p)=>sum+(p.ai_score||0),0)+data.photos.reduce((sum,p)=>sum+(p.likes||0),0)*5; const save=async()=>{try{const r=await api('/profile',{method:'PUT',body:JSON.stringify({username})});setData({...data,user:r.user});setEditing(false);notify('Profile updated')}catch(e){notify(e.message)}}; return <Shell onHome={onHome}><main className="sub-page"><div className="profile-head"><span className="profile-avatar">{data.user.username.slice(0,2).toUpperCase()}</span><div>{editing?<input className="auth-input" value={username} onChange={e=>setUsername(e.target.value)} maxLength="32"/>:<h1>{data.user.username}</h1>}<p className="muted">{data.photos.length} photos · {data.favorites.length} saved · {data.achievements.length} achievements</p></div><div className="detail-actions">{editing?<><button className="primary" onClick={save}>Save changes</button><button className="outline-btn" onClick={()=>setEditing(false)}>Cancel</button></>:<button className="outline-btn" onClick={()=>setEditing(true)}>Edit profile</button>}</div></div><div className="profile-metrics"><div><span>POINTS</span><b>{points}</b></div><div><span>GLOBAL RANK</span><b>#{rank}</b></div><div><span>PHOTO RATING</span><b>{average}/100</b></div><div><span>TOTAL LIKES</span><b>{data.photos.reduce((s,p)=>s+(p.likes||0),0)}</b></div></div><h2>My photos</h2><div className="gallery">{data.photos.map(p=><button key={p.id} onClick={()=>window.location.hash=`#photo/${p.id}`}><img src={p.image_url||photoFallbackUrl(p.id)} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=photoFallbackUrl(p.id)}}/><span>{p.ai_score}</span></button>)}</div><h2>Saved photos</h2><div className="gallery">{data.favorites.map(p=><button key={p.id} onClick={()=>window.location.hash=`#photo/${p.id}`}><img src={p.image_url||photoFallbackUrl(p.id)} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src=photoFallbackUrl(p.id)}}/><span>{p.ai_score}</span></button>)}</div><h2>Recommended places</h2><div className="saved-places">{recommendations.map(p=><button key={p.id} onClick={()=>window.location.hash=`#place/${p.id}`}><b>{p.name}</b><span>{p.city}, {p.country} · {p.photos} photos</span></button>)}</div></main></Shell>
 }
-function ProfilePage({ onHome, notify }) { return <ProfilePageV2 onHome={onHome} notify={notify}/> }
-function Notifications({ onClose, notify }) { const [items,setItems]=useState([]); React.useEffect(()=>{api('/notifications').then(x=>setItems(x.notifications)).catch(e=>notify(e.message))},[]); const unread=items.filter(n=>!n.read_at).length; return <div className="popover"><div className="popover-head"><b>Notifications{unread?<span className="badge">{unread}</span>:null}</b><button onClick={async()=>{await api('/notifications/read',{method:'POST'});setItems(items.map(x=>({...x,read_at:new Date().toISOString()})))}}>Mark all read</button></div>{items.length?items.map(n=><div className={n.read_at?'notice read':'notice'} key={n.id}><span>{n.type==='like'?'♥':'★'}</span>{n.message}</div>):<p className="muted">No notifications yet.</p>}<button className="modal-close" onClick={onClose}>×</button></div> }
+const GUEST_PREVIEW_NOTIFICATIONS = [
+  { id: 'g1', type: 'like', message: 'LukasOrtega liked “Golden hour at the bridge” in Prague', read_at: null, created_at: new Date(Date.now() - 14 * 60000).toISOString() },
+  { id: 'g2', type: 'rating', message: 'AnnaT rated “Blue hour in Barcelona” 5/5 ★', read_at: null, created_at: new Date(Date.now() - 48 * 60000).toISOString() },
+  { id: 'g3', type: 'achievement', message: '🏆 Unlocked badge: High Score (AI score above 90/100)', read_at: null, created_at: new Date(Date.now() - 3 * 3600000).toISOString() },
+  { id: 'g4', type: 'system', message: '📣 ShotMap AI Vision Engine v2.4 active — composition & golden-hour telemetry calibrated.', read_at: new Date().toISOString(), created_at: new Date(Date.now() - 18 * 3600000).toISOString() }
+]
+
+function formatNotifTime(iso) {
+  if (!iso) return 'Just now'
+  const diffMin = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000)
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${Math.round(diffMin)}m ago`
+  if (diffMin < 1440) return `${Math.round(diffMin / 60)}h ago`
+  if (diffMin < 10080) return `${Math.round(diffMin / 1440)}d ago`
+  return new Date(iso).toLocaleDateString()
+}
+
+function getNotifMeta(type) {
+  if (type === 'like') return { label: 'LIKE', cls: 'type-like', Icon: Heart, fallback: '♥' }
+  if (type === 'rating') return { label: 'RATING', cls: 'type-rating', Icon: Star, fallback: '★' }
+  if (type === 'achievement') return { label: 'AWARD', cls: 'type-achievement', Icon: Trophy, fallback: '🏆' }
+  return { label: 'SYSTEM', cls: 'type-system', Icon: Sparkles, fallback: '📣' }
+}
+
+function Notifications({ onClose, notify, onCountChange }) {
+  const [items, setItems] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [isGuest, setIsGuest] = useState(false)
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('shotmap_token')
+    if (!token) {
+      setIsGuest(true)
+      setItems(GUEST_PREVIEW_NOTIFICATIONS)
+      onCountChange?.(GUEST_PREVIEW_NOTIFICATIONS.filter(n => !n.read_at).length)
+      return
+    }
+    api('/notifications')
+      .then(x => {
+        const list = x.notifications || []
+        setIsGuest(false)
+        setItems(list)
+        onCountChange?.(list.filter(n => !n.read_at).length)
+      })
+      .catch(() => {
+        setIsGuest(true)
+        setItems(GUEST_PREVIEW_NOTIFICATIONS)
+      })
+  }, [])
+
+  const unread = items.filter(n => !n.read_at).length
+  const filtered = items.filter(n => {
+    if (filter === 'unread') return !n.read_at
+    if (filter === 'like') return n.type === 'like' || n.type === 'rating'
+    if (filter === 'system') return n.type === 'system' || n.type === 'achievement'
+    return true
+  })
+
+  const markItemRead = async (n) => {
+    if (n.read_at) return
+    const next = items.map(x => x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)
+    setItems(next)
+    onCountChange?.(next.filter(x => !x.read_at).length)
+    if (!isGuest) {
+      await api(`/notifications/${n.id}/read`, { method: 'PATCH' }).catch(() => {})
+    }
+  }
+
+  const markAll = async () => {
+    if (!isGuest) {
+      await api('/notifications/read', { method: 'POST' }).catch(() => {})
+    }
+    const next = items.map(x => ({ ...x, read_at: x.read_at || new Date().toISOString() }))
+    setItems(next)
+    onCountChange?.(0)
+    notify?.('All notifications marked read')
+  }
+
+  const openInStudio = () => {
+    sessionStorage.setItem('shotmap_studio_tab', 'Notifications')
+    window.dispatchEvent(new CustomEvent('shotmap:studio-tab', { detail: 'Notifications' }))
+    onClose?.()
+    window.location.hash = '#profile'
+  }
+
+  return (
+    <>
+      <div className="popover-backdrop" onClick={onClose}/>
+      <div className="popover" role="dialog" aria-label="Notifications">
+        <div className="popover-head">
+          <div className="popover-title-wrap">
+            <span className="popover-bell-chip"><Bell size={14}/></span>
+            <b>Notifications{unread ? <span className="badge">{unread}</span> : null}</b>
+          </div>
+          <div className="popover-head-actions">
+            <button type="button" className="popover-mark-btn" onClick={markAll} disabled={!unread}>
+              Mark all read
+            </button>
+            <button type="button" className="modal-close popover-close-inline" aria-label="Close notifications" onClick={onClose}>×</button>
+          </div>
+        </div>
+
+        {isGuest && (
+          <div className="popover-guest-banner">
+            <span>Previewing live ShotMap activity</span>
+            <button type="button" onClick={() => { onClose?.(); window.dispatchEvent(new Event('shotmap:login')) }}>
+              Sign in ↗
+            </button>
+          </div>
+        )}
+
+        <div className="popover-filter-bar">
+          {[
+            ['all', `All (${items.length})`],
+            ['unread', `Unread (${unread})`],
+            ['like', 'Likes & ★'],
+            ['system', 'Awards & AI']
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={`popover-filter-pill ${filter === key ? 'active' : ''}`}
+              onClick={() => setFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="popover-list">
+          {filtered.length ? filtered.map(n => {
+            const meta = getNotifMeta(n.type)
+            const Icon = meta.Icon
+            return (
+              <div
+                className={`${n.read_at ? 'notice read' : 'notice'} ${meta.cls}`}
+                key={n.id}
+                onClick={() => markItemRead(n)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter') markItemRead(n) }}
+              >
+                <span className={`notice-icon-badge ${meta.cls}`} aria-hidden="true">
+                  <Icon size={14}/>
+                </span>
+                <div className="notice-content">
+                  <div className="notice-meta-row">
+                    <em className={`notice-type-tag ${meta.cls}`}>{meta.label}</em>
+                    <small className="notice-time">{formatNotifTime(n.created_at)}</small>
+                    {!n.read_at && <i className="notice-unread-dot" title="Unread"/>}
+                  </div>
+                  <p className="notice-msg">{n.message}</p>
+                </div>
+              </div>
+            )
+          }) : (
+            <div className="popover-empty">
+              <Bell size={20}/>
+              <p className="muted">No notifications in this filter.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="popover-foot">
+          <button type="button" className="popover-studio-btn" onClick={openInStudio}>
+            <span>Open Notification Center in Studio</span>
+            <ArrowUpRight size={14}/>
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
 
 function AdminPage({ onHome, notify }) {
   const [reports,setReports]=useState([]); const [users,setUsers]=useState([]); const [photos,setPhotos]=useState([]); const [adminPlaces,setAdminPlaces]=useState([]); const [error,setError]=useState(''); const [overview,setOverview]=useState(null); const [settings,setSettings]=useState({mode:'test',endpoint:'',model:'',api_key:''}); const [saving,setSaving]=useState(false); const [adminTab,setAdminTab]=useState('all'); const [adminQuery,setAdminQuery]=useState(''); const [userFilter,setUserFilter]=useState('all'); const [reportFilter,setReportFilter]=useState('all');
@@ -850,7 +1049,7 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  React.useEffect(() => { if(!user) { setUnreadCount(0); return } let cancelled = false; const tick = () => api('/notifications').then(x => { if(!cancelled) setUnreadCount((x.notifications||[]).filter(n => !n.read_at).length) }).catch(() => {}); tick(); const t = window.setInterval(tick, 30000); return () => { cancelled = true; window.clearInterval(t) } }, [user, showNotifications])
+  React.useEffect(() => { if(!user) { setUnreadCount(3); return } let cancelled = false; const tick = () => api('/notifications').then(x => { if(!cancelled) setUnreadCount((x.notifications||[]).filter(n => !n.read_at).length) }).catch(() => {}); tick(); const t = window.setInterval(tick, 30000); return () => { cancelled = true; window.clearInterval(t) } }, [user, showNotifications])
   const [photoPages, setPhotoPages] = useState(1)
   const [photoFilter, setPhotoFilter] = useState({category:'',photoType:'',radiusKm:0,min_score:0,sort:'ai_score'})
   const [leaderboard, setLeaderboard] = useState([])
@@ -967,7 +1166,16 @@ function App() {
       </nav>
       <div className="nav-actions">
         <button className="theme-toggle" aria-label="Toggle theme" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>{theme==='dark'?'☀':'☾'}</button>
-        {user&&<button className="notification-btn" aria-label="Notifications" aria-expanded={showNotifications} onClick={()=>setShowNotifications(v=>!v)}><Bell size={17}/>{unreadCount>0&&<span className="badge">{unreadCount}</span>}</button>}
+        <button
+          type="button"
+          className={`notification-btn ${showNotifications ? 'is-open' : ''} ${unreadCount > 0 ? 'has-unread' : ''}`}
+          aria-label="Notifications"
+          aria-expanded={showNotifications}
+          onClick={()=>setShowNotifications(v=>!v)}
+        >
+          <Bell size={17}/>
+          {unreadCount>0&&<span className="badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+        </button>
         <button className="login" onClick={handleLogin}>{user ? user.username : 'Log in'}</button>
         {user&&<>
           <button className="login" onClick={()=>window.location.hash='#profile'}>Profile</button>
@@ -975,7 +1183,7 @@ function App() {
         </>}
         <button className="upload-btn" onClick={() => user ? setShowUpload(true) : setAuthMode('login')}><Upload size={15}/> {user ? 'Upload photo' : 'Log in to upload'}</button>
         <button className="menu-btn" onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
-        {showNotifications&&<Notifications onClose={()=>setShowNotifications(false)} notify={notify}/>}
+        {showNotifications&&<Notifications onClose={()=>setShowNotifications(false)} notify={notify} onCountChange={setUnreadCount}/>}
       </div>
     </header>
 

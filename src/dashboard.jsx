@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Avatar } from './avatar.jsx'
-import { LayoutGrid, Image as ImageIcon, MapPin, Heart, Trophy, BarChart3, Bell, Settings as SettingsIcon, Sparkles, ChevronLeft, Search, ArrowUpRight, Trash2, Shield, Camera, Users } from 'lucide-react'
+import { LayoutGrid, Image as ImageIcon, MapPin, Heart, Trophy, BarChart3, Bell, Settings as SettingsIcon, Sparkles, ChevronLeft, Search, ArrowUpRight, Trash2, Shield, Camera, Users, Star, CheckCircle2 } from 'lucide-react'
 
 const fallback = id => `https://commons.wikimedia.org/wiki/Special:FilePath/${['Prague_Charles_Bridge_2021_11.jpg','Tour_Eiffel_Wikimedia_Commons.jpg','Sagrada_Familia_01.jpg','Colosseum_in_Rome,_Italy_-_April_2007.jpg'][((Number(id || 1) - 1) % 4 + 4) % 4]}?width=1600`
 
@@ -16,7 +16,16 @@ const navIcons = {
 }
 
 export function Dashboard({ api, onHome, onLogin, notify, theme, setTheme }) {
-  const [tab, setTab] = useState('Overview')
+  const [tab, setTab] = useState(() => {
+    const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('shotmap_studio_tab') : null
+    if (saved) sessionStorage.removeItem('shotmap_studio_tab')
+    return saved || 'Overview'
+  })
+  useEffect(() => {
+    const onTab = (e) => { if (e.detail) setTab(e.detail) }
+    window.addEventListener('shotmap:studio-tab', onTab)
+    return () => window.removeEventListener('shotmap:studio-tab', onTab)
+  }, [])
   const [data, setData] = useState(null)
   const [photos, setPhotos] = useState([])
   const [places, setPlaces] = useState([])
@@ -127,7 +136,7 @@ export function Dashboard({ api, onHome, onLogin, notify, theme, setTheme }) {
 
 function DashboardShell({children,onHome,onLogin,nav,tab,setTab,unreadCount,theme,setTheme}) {
   return (
-    <Shell onHome={onHome} theme={theme} setTheme={setTheme}>
+    <Shell onHome={onHome} theme={theme} setTheme={setTheme} unreadCount={unreadCount} isNotifications={tab === 'Notifications'} onBellClick={() => setTab('Notifications')}>
       <main className="dashboard">
         <aside className="dashboard-side">
           <div className="dashboard-brand">Shot<span>Map</span> <small className="studio-tag">STUDIO</small></div>
@@ -147,7 +156,7 @@ function DashboardShell({children,onHome,onLogin,nav,tab,setTab,unreadCount,them
   )
 }
 
-function Shell({children,onHome,theme,setTheme}) {
+function Shell({children,onHome,theme,setTheme,unreadCount=0,isNotifications=false,onBellClick}) {
   return (
     <>
       <header className="nav sub-nav">
@@ -162,6 +171,18 @@ function Shell({children,onHome,theme,setTheme}) {
           {setTheme && (
             <button className="theme-toggle" aria-label="Toggle theme" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>
               {theme==='dark'?'☀':'☾'}
+            </button>
+          )}
+          {onBellClick && (
+            <button
+              type="button"
+              className={`notification-btn ${isNotifications ? 'is-open' : ''} ${unreadCount > 0 ? 'has-unread' : ''}`}
+              aria-label="Notifications"
+              onClick={onBellClick}
+              title="Open Studio Notification Center"
+            >
+              <Bell size={17}/>
+              {unreadCount > 0 && <span className="badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
             </button>
           )}
           <button className="outline-btn" onClick={onHome}><ChevronLeft size={14}/> Back to map</button>
@@ -394,26 +415,149 @@ function Statistics({stats}) {
   )
 }
 
+function formatRelativeStudioTime(iso) {
+  if (!iso) return 'Just now'
+  const diffMin = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000)
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${Math.round(diffMin)}m ago`
+  if (diffMin < 1440) return `${Math.round(diffMin / 60)}h ago`
+  if (diffMin < 10080) return `${Math.round(diffMin / 1440)}d ago`
+  return new Date(iso).toLocaleDateString()
+}
+
+function studioNotifMeta(type) {
+  if (type === 'like') return { label: 'Community Like', tag: 'LIKE', cls: 'type-like', Icon: Heart }
+  if (type === 'rating') return { label: 'Photo Rating', tag: 'RATING', cls: 'type-rating', Icon: Star }
+  if (type === 'achievement') return { label: 'Milestone Unlocked', tag: 'AWARD', cls: 'type-achievement', Icon: Trophy }
+  return { label: 'System & AI', tag: 'SYSTEM', cls: 'type-system', Icon: Sparkles }
+}
+
 function Notifications({items,markRead,markAllRead}) {
+  const [filter, setFilter] = useState('all')
   const unread = items.filter(n => !n.read_at).length
+  const likesCount = items.filter(n => n.type === 'like').length
+  const ratingsAwardsCount = items.filter(n => n.type === 'rating' || n.type === 'achievement').length
+  const systemCount = items.filter(n => n.type === 'system').length
+
+  const filtered = items.filter(n => {
+    if (filter === 'unread') return !n.read_at
+    if (filter === 'like') return n.type === 'like'
+    if (filter === 'rating') return n.type === 'rating' || n.type === 'achievement'
+    if (filter === 'system') return n.type === 'system'
+    return true
+  })
+
   return (
-    <>
-      {unread > 0 && (
-        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:14}}>
-          <button className="outline-btn" onClick={markAllRead}>Mark all {unread} read</button>
+    <div className="notif-studio-wrap">
+      <div className="notif-kpi-grid">
+        <div className={`notif-kpi-card ${unread > 0 ? 'highlight' : ''}`}>
+          <div className="notif-kpi-top">
+            <span>UNREAD ALERTS</span>
+            <i className="notif-kpi-icon type-like"><Bell size={15}/></i>
+          </div>
+          <strong>{unread}</strong>
+          <small>{unread > 0 ? `${unread} awaiting review` : 'All caught up ✓'}</small>
         </div>
-      )}
-      <div className="dashboard-notices">
-        {items.map(n=>(
-          <button className={n.read_at?'read':''} key={n.id} onClick={()=>markRead(n.id)}>
-            <b>{n.type}</b>
-            <span>{n.message}</span>
-            <small>{new Date(n.created_at).toLocaleString()}</small>
-          </button>
-        ))}
-        {!items.length&&<p className="muted">No notifications yet.</p>}
+        <div className="notif-kpi-card">
+          <div className="notif-kpi-top">
+            <span>LIKES & SAVES</span>
+            <i className="notif-kpi-icon type-like"><Heart size={15}/></i>
+          </div>
+          <strong>{likesCount}</strong>
+          <small>Community appreciation</small>
+        </div>
+        <div className="notif-kpi-card">
+          <div className="notif-kpi-top">
+            <span>RATINGS & AWARDS</span>
+            <i className="notif-kpi-icon type-rating"><Trophy size={15}/></i>
+          </div>
+          <strong>{ratingsAwardsCount}</strong>
+          <small>Reviews & milestones</small>
+        </div>
+        <div className="notif-kpi-card">
+          <div className="notif-kpi-top">
+            <span>SYSTEM & AI</span>
+            <i className="notif-kpi-icon type-system"><Sparkles size={15}/></i>
+          </div>
+          <strong>{systemCount}</strong>
+          <small>Pipeline & broadcasts</small>
+        </div>
       </div>
-    </>
+
+      <div className="notif-studio-toolbar">
+        <div className="notif-filter-chips">
+          {[
+            ['all', `All (${items.length})`],
+            ['unread', `Unread (${unread})`],
+            ['like', `Likes (${likesCount})`],
+            ['rating', `Ratings & Awards (${ratingsAwardsCount})`],
+            ['system', `System (${systemCount})`]
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={`filter-chip ${filter === key ? 'active' : ''}`}
+              onClick={() => setFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {unread > 0 ? (
+          <button type="button" className="outline-btn notif-mark-all-btn" onClick={markAllRead}>
+            <CheckCircle2 size={14}/> Mark all {unread} read
+          </button>
+        ) : (
+          <span className="notif-all-read-chip"><CheckCircle2 size={14}/> All notifications read</span>
+        )}
+      </div>
+
+      <div className="dashboard-notices">
+        {filtered.map(n => {
+          const meta = studioNotifMeta(n.type)
+          const Icon = meta.Icon
+          return (
+            <button
+              className={`${n.read_at ? 'read' : 'unread'} notif-studio-card ${meta.cls}`}
+              key={n.id}
+              onClick={() => markRead(n.id)}
+            >
+              <div className={`notif-card-icon ${meta.cls}`}>
+                <Icon size={18}/>
+              </div>
+              <div className="notif-card-body">
+                <div className="notif-card-head">
+                  <b className={`notif-tag-pill ${meta.cls}`}>{meta.tag}</b>
+                  <strong className="notif-category-title">{meta.label}</strong>
+                  {!n.read_at && <em className="notif-new-pill">NEW</em>}
+                  <small className="notif-card-time">
+                    {formatRelativeStudioTime(n.created_at)} · {new Date(n.created_at).toLocaleString()}
+                  </small>
+                </div>
+                <span className="notif-card-message">{n.message}</span>
+              </div>
+              <div className="notif-card-status">
+                {n.read_at ? (
+                  <u className="notif-state-badge is-read"><CheckCircle2 size={13}/> Read</u>
+                ) : (
+                  <u className="notif-state-badge is-unread">Mark read</u>
+                )}
+              </div>
+            </button>
+          )
+        })}
+        {!filtered.length && (
+          <div className="notif-empty-box">
+            <Bell size={24}/>
+            <b>No notifications match this filter</b>
+            <p className="muted">Try switching back to All notifications to see your activity history.</p>
+            {filter !== 'all' && (
+              <button type="button" className="outline-btn" onClick={() => setFilter('all')}>Show all notifications</button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
