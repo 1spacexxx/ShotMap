@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Avatar } from './avatar.jsx'
-import { LayoutGrid, Image as ImageIcon, MapPin, Heart, Trophy, BarChart3, Bell, Settings as SettingsIcon, Sparkles, ChevronLeft, Search, ArrowUpRight, Trash2 } from 'lucide-react'
+import { LayoutGrid, Image as ImageIcon, MapPin, Heart, Trophy, BarChart3, Bell, Settings as SettingsIcon, Sparkles, ChevronLeft, Search, ArrowUpRight, Trash2, Shield, Camera, Users } from 'lucide-react'
 
 const fallback = id => `https://commons.wikimedia.org/wiki/Special:FilePath/${['Prague_Charles_Bridge_2021_11.jpg','Tour_Eiffel_Wikimedia_Commons.jpg','Sagrada_Familia_01.jpg','Colosseum_in_Rome,_Italy_-_April_2007.jpg'][((Number(id || 1) - 1) % 4 + 4) % 4]}?width=1600`
 
@@ -39,6 +39,18 @@ export function Dashboard({ api, onHome, onLogin, notify, theme, setTheme }) {
   }
   useEffect(() => { load() }, [sort, minScore])
 
+  const quickLogin = async (email, password) => {
+    try {
+      const res = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+      if (res.token) {
+        localStorage.setItem('shotmap_token', res.token)
+        window.dispatchEvent(new CustomEvent('shotmap:profile-updated', { detail: { user: res.user } }))
+        notify?.(`Welcome, ${res.user.username}`)
+        await load()
+      }
+    } catch (e) { notify?.(e.message) }
+  }
+
   const remove = async id => { if (!window.confirm('Delete this photo?')) return; try { await api(`/photos/${id}`, {method:'DELETE'}); await load(); notify('Photo deleted') } catch (e) { notify(e.message) } }
   const markRead = async id => { try { await api(`/notifications/${id}/read`, {method:'PATCH'}); setNotifications(items => items.map(x => x.id === id ? {...x, read_at: new Date().toISOString()} : x)) } catch (e) { notify(e.message) } }
   const markAllRead = async () => { try { await api('/notifications/read', {method:'POST'}); setNotifications(items => items.map(x => ({...x, read_at: x.read_at || new Date().toISOString()}))); notify('All notifications marked read') } catch (e) { notify(e.message) } }
@@ -47,7 +59,27 @@ export function Dashboard({ api, onHome, onLogin, notify, theme, setTheme }) {
   const nav = ['Overview','Photos','Places','Saved','Achievements','Statistics','Notifications','Settings']
 
   if (loading && !data) return <DashboardShell onHome={onHome} onLogin={onLogin} nav={nav} tab={tab} setTab={setTab} unreadCount={unreadCount} theme={theme} setTheme={setTheme}><div className="dashboard-skeleton"><i/><i/><i/><i/></div></DashboardShell>
-  if (error && !data) return <DashboardShell onHome={onHome} onLogin={onLogin} nav={nav} tab={tab} setTab={setTab} unreadCount={unreadCount} theme={theme} setTheme={setTheme}><div className="dashboard-error"><h1>Profile unavailable</h1><p>{error}</p>{error.toLowerCase().includes('login') ? <button className="primary" onClick={onLogin}>Log in</button> : <button className="primary" onClick={load}>Try again</button>}<button className="text-btn" onClick={onHome}>Back to explore</button></div></DashboardShell>
+  if (error && !data) return (
+    <DashboardShell onHome={onHome} onLogin={onLogin} nav={nav} tab={tab} setTab={setTab} unreadCount={unreadCount} theme={theme} setTheme={setTheme}>
+      <div className="dashboard-error studio-login-gate">
+        <div className="eyebrow"><span className="dot"/> Personal studio</div>
+        <h1>Sign in to your Studio</h1>
+        <p className="muted">{error}</p>
+        <div className="studio-quick-auth">
+          <button type="button" className="primary" onClick={() => quickLogin('demo@shotmap.local', 'demo123')}>
+            ⚡ Quick sign in (Photographer)
+          </button>
+          <button type="button" className="outline-btn" onClick={() => quickLogin('admin@shotmap.local', 'admin123')}>
+            <Shield size={14}/> Quick sign in (Admin)
+          </button>
+          {error.toLowerCase().includes('login') || error.toLowerCase().includes('auth')
+            ? <button className="outline-btn" onClick={onLogin}>Log in manually</button>
+            : <button className="outline-btn" onClick={load}>Try again</button>}
+          <button className="text-btn" onClick={onHome}>Back to explore</button>
+        </div>
+      </div>
+    </DashboardShell>
+  )
 
   const content = tab === 'Photos'
     ? <Photos photos={photos} sort={sort} setSort={setSort} minScore={minScore} setMinScore={setMinScore} remove={remove}/>
@@ -73,10 +105,15 @@ export function Dashboard({ api, onHome, onLogin, notify, theme, setTheme }) {
             <div className="eyebrow"><span className="dot"/> Personal studio</div>
             <h1>{tab}</h1>
           </div>
-          <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <div className="dashboard-top-actions">
             {data?.user?.id && (
               <button className="outline-btn" onClick={() => window.location.hash = `#user/${data.user.id}`}>
                 Public portfolio <ArrowUpRight size={14}/>
+              </button>
+            )}
+            {data?.user?.role === 'admin' && (
+              <button className="outline-btn" onClick={() => window.location.hash = '#admin'}>
+                <Shield size={14}/> Admin panel
               </button>
             )}
             <button className="outline-btn" onClick={load}>Refresh</button>
@@ -113,12 +150,13 @@ function DashboardShell({children,onHome,onLogin,nav,tab,setTab,unreadCount,them
 function Shell({children,onHome,theme,setTheme}) {
   return (
     <>
-      <header className="nav">
+      <header className="nav sub-nav">
         <button className="brand" onClick={onHome}><span className="brand-mark">S</span><span>Shot<span>Map</span></span></button>
-        <nav className="nav-links">
+        <nav className="nav-links sub-nav-links">
           <button onClick={onHome}>Explore</button>
           <button onClick={()=>window.location.hash='#leaderboard'}>Leaderboard</button>
           <button className="active-nav" onClick={()=>window.location.hash='#profile'}>Profile</button>
+          <button onClick={()=>window.location.hash='#admin'}>Admin</button>
         </nav>
         <div className="nav-actions">
           {setTheme && (
@@ -130,6 +168,13 @@ function Shell({children,onHome,theme,setTheme}) {
         </div>
       </header>
       {children}
+      <nav className="mobile-bottom-dock" aria-label="Mobile quick navigation">
+        <button type="button" onClick={onHome}><MapPin size={16}/><span>Map</span></button>
+        <button type="button" onClick={()=>window.location.hash='#leaderboard'}><Trophy size={16}/><span>Leaders</span></button>
+        <button type="button" className="dock-upload-btn" onClick={onHome}><Camera size={16}/><span>Shoot</span></button>
+        <button type="button" className="active" onClick={()=>window.location.hash='#profile'}><Users size={16}/><span>Studio</span></button>
+        <button type="button" onClick={()=>window.location.hash='#admin'}><Shield size={16}/><span>Admin</span></button>
+      </nav>
     </>
   )
 }
@@ -153,7 +198,7 @@ function Overview({data,photos,best,setTab}) {
             <small>{data.stats.xp} / {nextXp} XP to Level {(data.stats.level || 1) + 1}</small>
           </div>
         </div>
-        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+        <div className="dashboard-profile-actions">
           <button className="outline-btn" onClick={()=>setTab('Photos')}>Manage photos</button>
           <button className="outline-btn" onClick={()=>setTab('Settings')}>Edit profile</button>
         </div>

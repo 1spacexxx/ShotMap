@@ -1,22 +1,30 @@
 import React, { useEffect, useState } from 'react'
 import { Avatar } from './avatar.jsx'
-import { Trophy, MapPin, Heart, Sparkles, ChevronLeft, Share2 } from 'lucide-react'
+import { Trophy, MapPin, Heart, Sparkles, ChevronLeft, Share2, Camera, Users, Shield } from 'lucide-react'
 
 function Shell({ children, onHome }) {
   return (
     <>
-      <header className="nav">
+      <header className="nav sub-nav">
         <button className="brand" onClick={onHome}><span className="brand-mark">S</span><span>Shot<span>Map</span></span></button>
-        <nav className="nav-links">
+        <nav className="nav-links sub-nav-links">
           <button onClick={onHome}>Explore</button>
           <button onClick={() => window.location.hash = '#leaderboard'}>Leaderboard</button>
           <button onClick={() => window.location.hash = '#profile'}>Profile</button>
+          <button onClick={() => window.location.hash = '#admin'}>Admin</button>
         </nav>
         <div className="nav-actions">
           <button className="outline-btn" onClick={onHome}><ChevronLeft size={14}/> Back to map</button>
         </div>
       </header>
       {children}
+      <nav className="mobile-bottom-dock" aria-label="Mobile quick navigation">
+        <button type="button" onClick={onHome}><MapPin size={16}/><span>Map</span></button>
+        <button type="button" onClick={() => window.location.hash = '#leaderboard'}><Trophy size={16}/><span>Leaders</span></button>
+        <button type="button" className="dock-upload-btn" onClick={onHome}><Camera size={16}/><span>Shoot</span></button>
+        <button type="button" className="active" onClick={() => window.location.hash = '#profile'}><Users size={16}/><span>Studio</span></button>
+        <button type="button" onClick={() => window.location.hash = '#admin'}><Shield size={16}/><span>Admin</span></button>
+      </nav>
     </>
   )
 }

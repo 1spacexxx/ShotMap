@@ -5,6 +5,7 @@ import { feature } from 'topojson-client'
 import { geoNaturalEarth1, geoPath } from 'd3-geo'
 import worldData from 'world-atlas/countries-110m.json' with { type: 'json' }
 import './styles.css'
+import './polish.css'
 import { Dashboard } from './dashboard.jsx'
 import { PublicProfilePage } from './public-profile.jsx'
 import { MapView as InteractiveMap } from './tile-map.jsx'
